@@ -37,14 +37,6 @@ def get_reagent_examples():
     from datetime import date
     import random
     
-    # Будущие даты (следующие 1-2 года)
-    future_dates = [
-        date(2025, 6, 15),
-        date(2025, 8, 20), 
-        date(2025, 12, 10),
-        date(2026, 3, 30),
-        date(2026, 7, 15)
-    ]
     
     return [
         # КЛАСС 1 - ТОЛЬКО В СЕЙФЕ
@@ -55,7 +47,7 @@ def get_reagent_examples():
             "quantity": 500.0,
             "unit": "g",
             "hazard_class": 1,
-            "expiry_date": random.choice(future_dates),
+            "expiry_date": "2025-12-23",
             "storage_name": "Сейф для особо опасных",
             "description": "Чрезвычайно токсичное соединение. Класс 1 - только в сейфе!"
         },
@@ -66,7 +58,7 @@ def get_reagent_examples():
             "quantity": 1000.0,
             "unit": "g",
             "hazard_class": 1,
-            "expiry_date": random.choice(future_dates),
+            "expiry_date": "2026-02-01",
             "storage_name": "Сейф для особо опасных",
             "description": "Сильный окислитель. Класс 1 - только в сейфе!"
         },
@@ -79,7 +71,7 @@ def get_reagent_examples():
             "quantity": 2500.0,
             "unit": "ml",
             "hazard_class": 2,
-            "expiry_date": random.choice(future_dates),
+            "expiry_date": "2027-01-10",
             "storage_name": "Холодильник для кислот",
             "description": "Концентрированная HCl, 36-38%. Высокоопасная."
         },
@@ -90,7 +82,7 @@ def get_reagent_examples():
             "quantity": 2000.0,
             "unit": "g",
             "hazard_class": 2,
-            "expiry_date": random.choice(future_dates),
+            "expiry_date": "2025-12-12",
             "storage_name": "Шкаф для щелочей и солей",
             "description": "Чистый NaOH, гранулы. Высокоопасная щелочь."
         },
@@ -103,7 +95,7 @@ def get_reagent_examples():
             "quantity": 5000.0,
             "unit": "ml", 
             "hazard_class": 3,
-            "expiry_date": random.choice(future_dates),
+            "expiry_date": "2026-01-02",
             "storage_name": "Шкаф для щелочей и солей",
             "description": "Ацетон ч.д.а. Умеренно опасный."
         },
@@ -114,7 +106,7 @@ def get_reagent_examples():
             "quantity": 3000.0,
             "unit": "ml",
             "hazard_class": 3,
-            "expiry_date": random.choice(future_dates), 
+            "expiry_date": "2026-03-03", 
             "storage_name": "Морозильная камера -20°C",
             "description": "Этанол 96%. Умеренно опасный."
         }
