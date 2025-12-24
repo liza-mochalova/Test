@@ -2,24 +2,32 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Annotated
 
 from fastapi.params import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from reagents.repository import ReagentRepository
+from reagents.repository import ReagentRepository, get_session
 from reagents.schemas import ReagentAdd, Reagent, ReagentId, ReagentUpdate
+from reagents.storage_service import StorageService
 
 router = APIRouter(prefix="/reagents", tags=["Reagents"])
 
 # Reagent endpoints
 @router.post("", response_model=ReagentId)
-async def add_reagent(reagent: Annotated[ReagentAdd, Depends()]) -> ReagentId:
-    reagent_id = await ReagentRepository.add_one(reagent)
+async def add_reagent(
+    reagent: Annotated[ReagentAdd, Depends()],
+    session: AsyncSession = Depends(get_session)) -> ReagentId:
+    storage_location_id = await StorageService.find_recommended_storage(
+        session, reagent
+    )
+    reagent_id = await ReagentRepository.add_one(session, reagent, storage_location_id)
     return ReagentId(ok=True, reagent_id=reagent_id)
 
 @router.get("", response_model=list[Reagent])
 async def get_reagents(
     skip: int = Query(0, ge=0, description="Пропустить первых N записей"),
-    limit: int = Query(100, ge=1, le=1000, description="Максимум записей")
+    limit: int = Query(100, ge=1, le=1000, description="Максимум записей"),
+    session: AsyncSession = Depends(get_session)
 ) -> list[Reagent]:
-    return await ReagentRepository.find_all(skip=skip, limit=limit)
+    return await ReagentRepository.find_all(session=session, skip=skip, limit=limit)
 
 @router.get("/{reagent_id}", response_model=Reagent)
 async def get_reagent(reagent_id: int) -> Reagent:

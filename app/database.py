@@ -1,8 +1,10 @@
 from datetime import date
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey, String, Enum as SQLEnum
+from sqlalchemy import Date, ForeignKey, String, Enum as SQLEnum
 import enum
+
+from order.schemas import OrderStatus, Priority
 
 class UnitType(str, enum.Enum):
     ML = "ml"
@@ -22,8 +24,6 @@ engine = create_async_engine(
 
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
-class Model(DeclarativeBase):
-    pass
 class Model(DeclarativeBase):
     pass
 
@@ -58,6 +58,22 @@ class ReagentsOrm(Model):
         nullable=False
     )
     storage_location: Mapped["StorageLocationOrm"] = relationship(back_populates="reagents")
+
+class OrderOrm(Model):
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    reagent_id: Mapped[int] = mapped_column(
+        ForeignKey("reagents.id"), 
+        nullable= False
+    )
+    reagent_cas: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    quantity: Mapped[float] = mapped_column(nullable=False)
+    unit: Mapped[UnitType] = mapped_column(SQLEnum(UnitType), nullable=False)
+    priority: Mapped[Priority] = mapped_column(SQLEnum(Priority), nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(SQLEnum(OrderStatus), nullable=False)
+    create_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
+    completed_at: Mapped[date] = mapped_column(Date, nullable=False)
 
 async def create_tables():
     async with engine.begin() as conn:

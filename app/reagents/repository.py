@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 from aiosqlite import IntegrityError, OperationalError
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, func, select
 from database import StorageType
 from reagents.storage_service import StorageService
@@ -9,75 +11,20 @@ from database import ReagentsOrm, new_session
 from database import  StorageLocationOrm
 from sqlalchemy.exc import SQLAlchemyError
 
+async def get_session():
+    async with new_session() as session:
+        yield session
+
 class ReagentRepository:
     @classmethod
-    async def add_one(cls, reag: ReagentAdd) -> int:
-        """
-        Добавляет новый реактив в систему
-        Автоматически подбирает место хранения если не указано явно
-        """
-        async with new_session() as session:
-            try:
-                storage_location_id = reag.storage_location_id
-                if storage_location_id is None:
-                    try:
-                        storage_location_id = await StorageService.get_recommended_storage(reag.hazard_class)
-                        print(f"Автоматически подобрано хранилище {storage_location_id} для класса опасности {reag.hazard_class}")
-                    except BusinessRuleException as e:
-                        raise BusinessRuleException(
-                            f"Cannot add reagent: {e.detail}",
-                            error_code=e.error_code
-                        )
-
-                storage = await session.get(StorageLocationOrm, storage_location_id)
-                if not storage:
-                    raise NotFoundException("Storage location", storage_location_id)
-                
-                if not storage.is_active:
-                    raise BusinessRuleException(
-                        f"Cannot add reagent to inactive storage location '{storage.name}' (ID: {storage_location_id})",
-                        error_code="INACTIVE_STORAGE"
-                    )
-
-                if reag.hazard_class == 1 and storage.type != StorageType.SAFE:
-                    raise BusinessRuleException(
-                        f"Hazard class 1 reagents must be stored in safe, not {storage.type.value}",
-                        error_code="INVALID_STORAGE_FOR_HAZARD_CLASS"
-                    )
-
-                current_count_query = select(func.count(ReagentsOrm.id)).where(
-                    ReagentsOrm.storage_location_id == storage_location_id
-                )
-                current_count_result = await session.execute(current_count_query)
-                current_count = current_count_result.scalar_one()
-
-                if current_count >= storage.max_capacity:
-                    raise BusinessRuleException(
-                        f"Storage location '{storage.name}' capacity exceeded: {current_count}/{storage.max_capacity}",
-                        error_code="STORAGE_CAPACITY_EXCEEDED"
-                    )
-
-                existing_cas_query = select(ReagentsOrm).where(
-                    ReagentsOrm.cas_number == reag.cas_number
-                )
-                existing_cas_result = await session.execute(existing_cas_query)
-                existing_reagent = existing_cas_result.scalar_one_or_none()
-                
-                if existing_reagent:
-                    raise BusinessRuleException(
-                        f"Reagent with CAS number '{reag.cas_number}' already exists (ID: {existing_reagent.id})",
-                        error_code="DUPLICATE_CAS"
-                    )
-
-                if reag.expiry_date < date.today():
-                    raise BusinessRuleException(
-                        f"Cannot add reagent with expired date: {reag.expiry_date}",
-                        error_code="EXPIRED_REAGENT"
-                    )
-
+    async def add_one(
+        cls, 
+        session: AsyncSession,
+        reag: ReagentAdd,
+        storage_location_id: int) -> int:
                 reag_dict = reag.model_dump()
                 reag_dict['storage_location_id'] = storage_location_id
-                
+
                 reag_orm = ReagentsOrm(**reag_dict)
                 session.add(reag_orm)
 
@@ -85,50 +32,16 @@ class ReagentRepository:
                 reagent_id = reag_orm.id
                 
                 await session.commit()
-                
-                print(f"Реактив '{reag.name}' успешно добавлен с ID: {reagent_id} в хранилище: {storage.name} (ID: {storage_location_id})")
+
                 return reagent_id
 
-            except BusinessRuleException:
-                await session.rollback()
-                raise
-                
-            except IntegrityError as e:
-                await session.rollback()
-                if "UNIQUE constraint failed: reagents.cas_number" in str(e):
-                    raise BusinessRuleException(
-                        f"Reagent with CAS number '{reag.cas_number}' already exists",
-                        error_code="DUPLICATE_CAS"
-                    )
-                raise BusinessRuleException(
-                    "Database integrity error - possible data corruption",
-                    error_code="DATA_INTEGRITY_ERROR"
-                )
-                
-            except OperationalError as e:
-                await session.rollback()
-                raise BusinessRuleException(
-                    "Database connection issue - please try again later",
-                    error_code="DATABASE_CONNECTION_ERROR"
-                )
-                
-            except SQLAlchemyError as e:
-                await session.rollback()
-                raise BusinessRuleException(
-                    "Database operation failed",
-                    error_code="DATABASE_ERROR"
-                )
-                
-            except Exception as e:
-                await session.rollback()
-                raise BusinessRuleException(
-                    f"Unexpected error while adding reagent: {str(e)}",
-                    error_code="UNEXPECTED_ERROR"
-                )
-        
     @classmethod
-    async def find_all(cls, skip: int = 0, limit: int = 100) -> list[Reagent]:
-        async with new_session() as session:
+    async def find_all(
+        cls, 
+        session: AsyncSession,
+        skip: int = 0, 
+        limit: int = 100,
+        ) -> list[Reagent]:
             query = select(ReagentsOrm).offset(skip).limit(limit)
             result = await session.execute(query)
             reag_models = result.scalars().all()

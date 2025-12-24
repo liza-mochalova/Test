@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.params import Depends
 
 from storage.repository import StorageLocationRepository
@@ -14,8 +14,11 @@ async def add_storage_location(storage: Annotated[StorageLocationAdd, Depends()]
     return StorageLocationId(ok=True, storage_location_id=storage_id)
 
 @router.get("/storage-locations", response_model=list[StorageLocation])
-async def get_storage_locations() -> list[StorageLocation]:
-    return await StorageLocationRepository.find_all()
+async def get_storage_locations(
+    skip: int = Query(0, ge=0, description="Пропустить первых N записей"),
+    limit: int = Query(100, ge=1, le=1000, description="Максимум записей")
+) -> list[StorageLocation]:
+    return await StorageLocationRepository.find_all(skip=skip, limit=limit)
 
 @router.get("/storage-locations/active", response_model=list[StorageLocation])
 async def get_active_storage_locations():

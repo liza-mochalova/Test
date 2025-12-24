@@ -15,9 +15,9 @@ class StorageLocationRepository:
             return storage_orm.id
     
     @classmethod
-    async def find_all(cls) -> list[StorageLocation]:
+    async def find_all(cls, skip: int = 0, limit: int = 100) -> list[StorageLocation]:
         async with new_session() as session:
-            query = select(StorageLocationOrm)
+            query = select(StorageLocationOrm).offset(skip).limit(limit)
             result = await session.execute(query)
             storage_models = result.scalars().all()
             storage_schemas = [StorageLocation.model_validate(model) for model in storage_models]
