@@ -75,6 +75,8 @@ class OrderOrm(Model):
     create_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     completed_at: Mapped[date] = mapped_column(Date, nullable=False)
 
+    reagent: Mapped["ReagentsOrm"] = relationship(back_populates="orders")
+
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Model.metadata.create_all)

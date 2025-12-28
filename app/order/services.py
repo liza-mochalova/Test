@@ -49,4 +49,3 @@ class OrderStateMachine:
         return True
     
 
-apply_async() queue
