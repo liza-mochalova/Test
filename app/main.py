@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from datetime import datetime
-
+from celery import Celery
 from database import create_tables, delete_tables
 from reagents.router_reagent import router as reagents_router
 from storage.router_storage import router as storage_router
@@ -31,6 +31,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+
+celery = Celery(
+    __name__,
+    broker='redis://127.0.0.1:6379/0',
+    backend='redis://127.0.0.1:6379/0',
+    broker_connection_retry_on_startup=True
+)
 
 # Глобальная обработка ошибок
 @app.exception_handler(BusinessRuleException)

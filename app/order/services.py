@@ -47,3 +47,6 @@ class OrderStateMachine:
         self.current = transition.dest
         self.order.status = self.current
         return True
+    
+
+apply_async() queue
